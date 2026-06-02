@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form>
+	<fieldset name="translation">
+		<field
+			name="translation_title"
+			type="text"
+			label="COM_TRANSLATIONS_EDITOR_FIELD_TRANSLATION_TITLE_LABEL"
+		/>
+		<field
+			name="translation_text"
+			type="editor"
+			label="COM_TRANSLATIONS_EDITOR_FIELD_TRANSLATION_TEXT_LABEL"
+			buttons="true"
+		/>
+	</fieldset>
+</form>
