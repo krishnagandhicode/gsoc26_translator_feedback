@@ -66,7 +66,7 @@ $listOrder = $this->escape($this->state->get('list.ordering'));
                             <?php $statusLabel = $status !== '' ? Text::_('COM_TRANSLATIONS_STATUS_' . strtoupper($status)) : Text::_('COM_TRANSLATIONS_STATUS_NONE'); ?>
                             <td class="text-center">
                                 <?php if ($editable) : ?>
-                                    <a href="<?php echo Route::_('index.php?option=com_translations&view=editor&id=' . (int) $item->id . '&target=' . urlencode($langCode)); ?>">
+                                    <a href="<?php echo Route::_('index.php?option=com_translations&view=editor&layout=edit&id=' . (int) $item->id . '&target=' . urlencode($langCode)); ?>">
                                         <?php echo $this->escape($statusLabel); ?>
                                     </a>
                                 <?php elseif ($status !== '') : ?>

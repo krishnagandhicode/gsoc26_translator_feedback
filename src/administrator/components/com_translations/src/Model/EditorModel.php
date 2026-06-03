@@ -93,8 +93,9 @@ class EditorModel extends FormModel
         }
 
         return [
-            'translation_title' => $item->translation_article->title,
-            'translation_text'  => $this->articleBody($item->translation_article),
+            'translation_title'     => $item->translation_article->title,
+            'translation_introtext' => $item->translation_article->introtext,
+            'translation_fulltext'  => $item->translation_article->fulltext,
         ];
     }
 
@@ -111,8 +112,8 @@ class EditorModel extends FormModel
             return $this->item;
         }
 
-        $contentId = (int) $this->getState('content_id');
-        $target    = (string) $this->getState('target_language');
+        $contentId      = (int) $this->getState('content_id');
+        $targetLanguage = (string) $this->getState('target_language');
 
         $sourceArticle      = $this->loadArticle($contentId);
         $translationArticle = null;
@@ -120,17 +121,17 @@ class EditorModel extends FormModel
         // The queue tables hold no draft pointer, so resolve the translation from the
         // source article through #__associations (Associations::getAssociations returns
         // one entry per language, keyed by language code, each carrying ->id).
-        if ($sourceArticle !== null && $target !== '' && Associations::isEnabled()) {
+        if ($sourceArticle !== null && $targetLanguage !== '' && Associations::isEnabled()) {
             $associations = Associations::getAssociations('com_content', '#__content', 'com_content.item', $contentId);
 
-            if (isset($associations[$target])) {
-                $translationArticle = $this->loadArticle((int) $associations[$target]->id);
+            if (isset($associations[$targetLanguage])) {
+                $translationArticle = $this->loadArticle((int) $associations[$targetLanguage]->id);
             }
         }
 
         $this->item = (object) [
             'content_id'          => $contentId,
-            'target_language'     => $target,
+            'target_language'     => $targetLanguage,
             'source_article'      => $sourceArticle,
             'translation_article' => $translationArticle,
         ];
@@ -163,21 +164,5 @@ class EditorModel extends FormModel
         $db->setQuery($query);
 
         return $db->loadObject() ?: null;
-    }
-
-    /**
-     * Join an article's intro and full text for display.
-     *
-     * @param   object  $article  The article row.
-     *
-     * @return  string  The combined body HTML.
-     *
-     * @since   0.2.0
-     */
-    private function articleBody(object $article): string
-    {
-        $fullText = trim((string) $article->fulltext);
-
-        return $fullText !== '' ? $article->introtext . $fullText : (string) $article->introtext;
     }
 }
