@@ -34,7 +34,7 @@ class HtmlView extends BaseHtmlView
      * @var    \Joomla\CMS\Form\Form
      * @since  0.2.0
      */
-    protected $form;
+    public $form;
 
     /**
      * The source + translation pair.
@@ -42,7 +42,7 @@ class HtmlView extends BaseHtmlView
      * @var    object
      * @since  0.2.0
      */
-    protected $item;
+    public $item;
 
     /**
      * Render the view.

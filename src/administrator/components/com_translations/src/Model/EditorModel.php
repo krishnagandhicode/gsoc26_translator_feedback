@@ -61,20 +61,14 @@ class EditorModel extends FormModel
      * @param   array    $data      Data for the form.
      * @param   boolean  $loadData  True to load the form's own data.
      *
-     * @return  Form|boolean  The form object, or false on failure.
+     * @return  Form  The form object.
      *
      * @since   0.2.0
      */
     public function getForm($data = [], $loadData = true)
     {
         // Build the form from forms/editor.xml; 'jform' namespaces the fields, load_data triggers loadFormData() below.
-        $form = $this->loadForm('com_translations.editor', 'editor', ['control' => 'jform', 'load_data' => $loadData]);
-
-        if (empty($form)) {
-            return false;
-        }
-
-        return $form;
+        return $this->loadForm('com_translations.editor', 'editor', ['control' => 'jform', 'load_data' => $loadData]);
     }
 
     /**
