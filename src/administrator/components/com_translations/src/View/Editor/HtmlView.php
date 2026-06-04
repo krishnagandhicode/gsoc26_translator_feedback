@@ -60,6 +60,11 @@ class HtmlView extends BaseHtmlView
         $this->item = $model->getItem();
         $this->form = $model->getForm();
 
+        // The editing form needs the validator so the Save toolbar button can submit, plus keepalive.
+        $this->getDocument()->getWebAssetManager()
+            ->useScript('keepalive')
+            ->useScript('form.validate');
+
         $this->addToolbar();
 
         parent::display($tpl);
@@ -75,5 +80,11 @@ class HtmlView extends BaseHtmlView
     protected function addToolbar()
     {
         ToolbarHelper::title(Text::_('COM_TRANSLATIONS_EDITOR_TITLE'), 'comments');
+
+        // Only offer saving when there is a translation to edit.
+        if ($this->item->translation_article !== null) {
+            ToolbarHelper::apply('editor.save', 'COM_TRANSLATIONS_EDITOR_SAVE');
+            ToolbarHelper::cancel('editor.cancel');
+        }
     }
 }
