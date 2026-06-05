@@ -24,7 +24,7 @@ use Joomla\Component\Content\Administrator\Model\ArticleModel;
 use Joomla\Database\ParameterType;
 
 /**
- * Side-by-side editor model.
+ * Side-by-side translation feedback model.
  *
  * Loads one source-language article and its translation in a single target
  * language for display. The queue tables store no pointer to the draft article,
@@ -33,7 +33,7 @@ use Joomla\Database\ParameterType;
  *
  * @since  0.2.0
  */
-class EditorModel extends FormModel
+class TranslatorfeedbackModel extends FormModel
 {
     /**
      * Cached source + translation pair (see getItem()).
@@ -59,7 +59,7 @@ class EditorModel extends FormModel
     }
 
     /**
-     * Load the editor form.
+     * Load the translation feedback form.
      *
      * @param   array    $data      Data for the form.
      * @param   boolean  $loadData  True to load the form's own data.
@@ -70,8 +70,8 @@ class EditorModel extends FormModel
      */
     public function getForm($data = [], $loadData = true)
     {
-        // Build the form from forms/editor.xml; 'jform' namespaces the fields, load_data triggers loadFormData() below.
-        return $this->loadForm('com_translations.editor', 'editor', ['control' => 'jform', 'load_data' => $loadData]);
+        // Build the form from forms/translatorfeedback.xml; 'jform' namespaces the fields, load_data triggers loadFormData() below.
+        return $this->loadForm('com_translations.translatorfeedback', 'translatorfeedback', ['control' => 'jform', 'load_data' => $loadData]);
     }
 
     /**
@@ -114,7 +114,7 @@ class EditorModel extends FormModel
         $item = $this->getItem();
 
         if (empty($item->translation_article)) {
-            throw new \RuntimeException(Text::_('COM_TRANSLATIONS_EDITOR_NO_TRANSLATION'));
+            throw new \RuntimeException(Text::_('COM_TRANSLATIONS_TRANSLATOR_FEEDBACK_NO_TRANSLATION'));
         }
 
         $translationId = (int) $item->translation_article->id;
@@ -124,7 +124,7 @@ class EditorModel extends FormModel
 
         // com_content is booted as a generic component, so make sure it can give us an MVC factory before we ask for one.
         if (!$component instanceof MVCFactoryServiceInterface) {
-            throw new \RuntimeException(Text::_('COM_TRANSLATIONS_EDITOR_SAVE_ERROR'));
+            throw new \RuntimeException(Text::_('COM_TRANSLATIONS_TRANSLATOR_FEEDBACK_SAVE_ERROR'));
         }
 
         // 'ignore_request' => true: we hand this model our own data, so it must not read state from the current request.
@@ -132,7 +132,7 @@ class EditorModel extends FormModel
 
         // And make sure that factory built the article model we expect before we call save() on it.
         if (!$articleModel instanceof ArticleModel) {
-            throw new \RuntimeException(Text::_('COM_TRANSLATIONS_EDITOR_SAVE_ERROR'));
+            throw new \RuntimeException(Text::_('COM_TRANSLATIONS_TRANSLATOR_FEEDBACK_SAVE_ERROR'));
         }
 
         // Load the raw article row - plain column values, avoiding the computed objects getItem() adds (e.g. tags).
@@ -147,7 +147,7 @@ class EditorModel extends FormModel
         $article = $db->loadAssoc();
 
         if ($article === null) {
-            throw new \RuntimeException(Text::_('COM_TRANSLATIONS_EDITOR_NO_TRANSLATION'));
+            throw new \RuntimeException(Text::_('COM_TRANSLATIONS_TRANSLATOR_FEEDBACK_NO_TRANSLATION'));
         }
 
         // Overwrite only the three translated fields; for anything not submitted, keep the article's current value.

@@ -19,10 +19,10 @@ use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\CMS\Router\Route;
 
 /**
- * Controller for the side by side translation editor.
+ * Controller for the side-by-side translation feedback view.
  *
  * Handles saving the edited translation back into its draft #__content article
- * (the actual write is delegated to com_content's ArticleModel by EditorModel).
+ * (the actual write is delegated to com_content's ArticleModel by TranslatorfeedbackModel).
  *
  * Extends BaseController, not FormController: we own no #__content table, so there
  * is no record lifecycle (checkout/edit-state) for this controller to manage - it
@@ -30,10 +30,10 @@ use Joomla\CMS\Router\Route;
  *
  * @since  0.2.0
  */
-class EditorController extends BaseController
+class TranslatorfeedbackController extends BaseController
 {
     /**
-     * Save the edited translation, then return to the editor.
+     * Save the edited translation, then return to the translation feedback view.
      *
      * @return  void
      *
@@ -50,8 +50,8 @@ class EditorController extends BaseController
         // Editor fields carry HTML, read raw so the markup is preserved (admin only screen).
         $form = $this->input->post->get('jform', [], 'raw');
 
-        /** @var \Joomla\Component\Translations\Administrator\Model\EditorModel $model */
-        $model = $this->getModel('Editor');
+        /** @var \Joomla\Component\Translations\Administrator\Model\TranslatorfeedbackModel $model */
+        $model = $this->getModel('Translatorfeedback');
 
         $error = null;
 
@@ -63,19 +63,19 @@ class EditorController extends BaseController
         }
 
         if ($saved) {
-            $app->enqueueMessage(Text::_('COM_TRANSLATIONS_EDITOR_SAVE_SUCCESS'), 'message');
+            $app->enqueueMessage(Text::_('COM_TRANSLATIONS_TRANSLATOR_FEEDBACK_SAVE_SUCCESS'), 'message');
         } else {
-            $app->enqueueMessage($error ?: Text::_('COM_TRANSLATIONS_EDITOR_SAVE_ERROR'), 'error');
+            $app->enqueueMessage($error ?: Text::_('COM_TRANSLATIONS_TRANSLATOR_FEEDBACK_SAVE_ERROR'), 'error');
         }
 
-        $url = 'index.php?option=com_translations&view=editor&layout=edit&id=' . $contentId
+        $url = 'index.php?option=com_translations&view=translatorfeedback&layout=edit&id=' . $contentId
             . '&target=' . urlencode($targetLanguage);
 
         $this->setRedirect(Route::_($url, false));
     }
 
     /**
-     * Leave the editor without saving.
+     * Leave the editor (the translation feedback view) without saving.
      *
      * @return  void
      *
