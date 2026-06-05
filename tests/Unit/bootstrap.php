@@ -246,7 +246,7 @@ if (!class_exists('Joomla\Tests\Unit\UnitTestCase')) {
 $componentSrcPath = __DIR__ . '/../../src/administrator/components/com_translations/src';
 $componentFiles = [
     'Model/QueueModel.php',
-    'Model/EditorModel.php',
+    'Model/TranslatorfeedbackModel.php',
 ];
 
 foreach ($componentFiles as $file) {
