@@ -87,7 +87,7 @@ class HtmlView extends BaseHtmlView
             return;
         }
 
-        // The fluent toolbar API is provided by the HTML document (admin views always render in one).
+        // The toolbar is provided by the HTML document (admin views always render in one).
         $document = $this->getDocument();
 
         if (!$document instanceof HtmlDocument) {
