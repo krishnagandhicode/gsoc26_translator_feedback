@@ -1,0 +1,33 @@
+@charset "UTF-8";
+
+/* Read-only original panes, shown as cards beside the editable translation. */
+
+/* Pane colours, taken from the template's variables with literal fallbacks for
+   when those variables are not defined. */
+.translations-readonly {
+    --tf-tint-rgb: var(--body-color-rgb, 33, 37, 41);
+    --tf-border: var(--border-color, #dee2e6);
+}
+
+/* Header label bar: a subtle tint with a bottom rule. */
+.translations-readonly .card-header {
+    background-color: rgba(var(--tf-tint-rgb), 0.05);
+    border-bottom: 2px solid var(--tf-border);
+    font-size: 1.1rem;
+}
+
+/* Cap the body height so a long source scrolls inside the card. */
+.translations-readonly-body {
+    min-height: 6rem;
+    max-height: 24rem;
+    overflow-y: auto;
+}
+
+/* Side by side: match the header height to the editor so the two bodies line up. */
+@media (min-width: 992px) {
+    .translations-readonly .card-header {
+        display: flex;
+        align-items: center;
+        min-height: 5.7rem;
+    }
+}
