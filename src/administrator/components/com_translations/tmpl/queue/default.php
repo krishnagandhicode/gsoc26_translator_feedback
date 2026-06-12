@@ -16,6 +16,7 @@ use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Layout\LayoutHelper;
 use Joomla\CMS\Router\Route;
+use Joomla\CMS\Session\Session;
 
 $listDirn  = $this->escape($this->state->get('list.direction'));
 $listOrder = $this->escape($this->state->get('list.ordering'));
@@ -72,7 +73,12 @@ $listOrder = $this->escape($this->state->get('list.ordering'));
                                 <?php elseif ($status !== '') : ?>
                                     <span class="badge bg-info"><?php echo $this->escape($statusLabel); ?></span>
                                 <?php else : ?>
-                                    <span class="badge bg-secondary"><?php echo $this->escape($statusLabel); ?></span>
+                                    <?php // An absent state means ready for translation, so the badge triggers it. ?>
+                                    <a class="badge bg-secondary text-decoration-none"
+                                        href="<?php echo Route::_('index.php?option=com_translations&task=translation.translate&id=' . (int) $item->id . '&target=' . urlencode($langCode) . '&' . Session::getFormToken() . '=1'); ?>"
+                                        title="<?php echo $this->escape(Text::_('COM_TRANSLATIONS_TRANSLATE_NOW')); ?>">
+                                        <?php echo $this->escape($statusLabel); ?>
+                                    </a>
                                 <?php endif; ?>
                             </td>
                         <?php endforeach; ?>
