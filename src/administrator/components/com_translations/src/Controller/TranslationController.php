@@ -57,7 +57,7 @@ class TranslationController extends BaseController
         $model = $this->getModel('Translation');
 
         try {
-            $model->translate($sourceArticleId, $targetLanguage);
+            $model->translate($sourceArticleId, $targetLanguage, $app);
             $app->enqueueMessage(Text::sprintf('COM_TRANSLATIONS_TRANSLATE_SUCCESS', $targetLanguage), 'message');
         } catch (\Throwable $e) {
             $app->enqueueMessage($e->getMessage() ?: Text::_('COM_TRANSLATIONS_TRANSLATE_ERROR'), 'error');

@@ -14,7 +14,8 @@ namespace Joomla\Component\Translations\Administrator\Model;
 \defined('_JEXEC') or die;
 // phpcs:enable PSR1.Files.SideEffects
 
-use Joomla\CMS\Factory;
+use Joomla\CMS\Application\CMSApplicationInterface;
+use Joomla\CMS\Extension\ComponentInterface;
 use Joomla\CMS\MVC\Factory\MVCFactoryServiceInterface;
 use Joomla\CMS\MVC\Model\BaseDatabaseModel;
 use Joomla\Component\Content\Administrator\Model\ArticleModel;
@@ -43,8 +44,9 @@ class TranslationModel extends BaseDatabaseModel
      * Creates the unpublished draft article with its association to the source and
      * sets the per-language queue state to "review", ready for translator feedback.
      *
-     * @param   integer  $sourceArticleId  The source article id.
-     * @param   string   $targetLanguage   The target language code, e.g. 'fr-FR'.
+     * @param   integer                  $sourceArticleId  The source article id.
+     * @param   string                   $targetLanguage   The target language code, e.g. 'fr-FR'.
+     * @param   CMSApplicationInterface  $application      The application, used to boot com_content.
      *
      * @return  void
      *
@@ -52,7 +54,7 @@ class TranslationModel extends BaseDatabaseModel
      *
      * @since   0.3.0
      */
-    public function translate(int $sourceArticleId, string $targetLanguage): void
+    public function translate(int $sourceArticleId, string $targetLanguage, CMSApplicationInterface $application): void
     {
         $sourceArticle = $this->getSourceArticle($sourceArticleId);
 
@@ -69,7 +71,7 @@ class TranslationModel extends BaseDatabaseModel
             throw new \RuntimeException(\sprintf('Article %d is marked as not to be translated.', $sourceArticleId));
         }
 
-        $this->createDraft($sourceArticle, $targetLanguage);
+        $this->createDraft($sourceArticle, $targetLanguage, $application);
         $this->markReadyForReview($sourceArticleId, $targetLanguage);
     }
 
@@ -171,31 +173,25 @@ class TranslationModel extends BaseDatabaseModel
      * association handling run exactly as for a hand created article. Passing the source
      * article under 'associations' makes core write the #__associations link itself.
      *
-     * @param   array   $sourceArticle   The source article's column values.
-     * @param   string  $targetLanguage  The target language code.
+     * @param   array                    $sourceArticle   The source article's column values.
+     * @param   string                   $targetLanguage  The target language code.
+     * @param   CMSApplicationInterface  $application     The application, used to boot com_content.
      *
      * @return  void
      *
-     * @throws  \RuntimeException  If com_content cannot provide its article model or the save fails.
+     * @throws  \RuntimeException  If the draft cannot be saved.
      *
      * @since   0.3.0
      */
-    private function createDraft(array $sourceArticle, string $targetLanguage): void
+    private function createDraft(array $sourceArticle, string $targetLanguage, CMSApplicationInterface $application): void
     {
         // Save through com_content's article model so versioning and the content events run.
-        $component = Factory::getApplication()->bootComponent('com_content');
-
-        // Check that com_content can provide an MVC factory.
-        if (!$component instanceof MVCFactoryServiceInterface) {
-            throw new \RuntimeException('com_content did not provide an MVC factory.');
-        }
+        /** @var ComponentInterface&MVCFactoryServiceInterface $component */
+        $component = $application->bootComponent('com_content');
 
         // Ignore the request because the model gets its data from us.
+        /** @var ArticleModel $articleModel */
         $articleModel = $component->getMVCFactory()->createModel('Article', 'Administrator', ['ignore_request' => true]);
-
-        if (!$articleModel instanceof ArticleModel) {
-            throw new \RuntimeException('com_content did not provide its article model.');
-        }
 
         $introtext = $this->mockTranslate((string) $sourceArticle['introtext'], $targetLanguage);
         $fulltext  = $this->mockTranslate((string) $sourceArticle['fulltext'], $targetLanguage);
