@@ -91,11 +91,15 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
             return;
         }
 
-        $form->loadFile(\dirname(__DIR__, 2) . '/forms/translationoptout.xml');
+        // Load the toggle for source-language articles and new ones (language not set yet).
+        $data     = $event->getData();
+        $language = (string) (\is_object($data) ? ($data->language ?? '') : ($data['language'] ?? ''));
 
-        // Show the toggle only on source-language articles; the leading dot targets the root language
-        // field and showon reacts to it live as the language is changed.
-        $form->setFieldAttribute(self::FIELD, 'showon', '.language:' . $this->getSourceLanguage(), 'attribs');
+        if ($language !== '' && $language !== $this->getSourceLanguage()) {
+            return;
+        }
+
+        $form->loadFile(\dirname(__DIR__, 2) . '/forms/translationoptout.xml');
     }
 
     /**
