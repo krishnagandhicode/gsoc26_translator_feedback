@@ -13,8 +13,6 @@
             "component": "com_content",
             "model": "Article",
             "table": "#__content",
-            "type_id": "1",
-            "context_custom_fields": "com_content.article",
             "context_associations": "com_content.item",
             "draftCopyFields": ["catid", "access", "created_by"],
             "stateField": "state",

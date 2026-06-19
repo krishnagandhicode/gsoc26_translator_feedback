@@ -14,6 +14,7 @@ namespace Joomla\Component\Translations\Administrator\Model;
 \defined('_JEXEC') or die;
 // phpcs:enable PSR1.Files.SideEffects
 
+use Joomla\CMS\Application\ApplicationHelper;
 use Joomla\CMS\Application\CMSApplicationInterface;
 use Joomla\CMS\Extension\ComponentInterface;
 use Joomla\CMS\MVC\Factory\MVCFactoryServiceInterface;
@@ -367,12 +368,17 @@ class TranslationModel extends BaseDatabaseModel
 
         $draft = array_merge($fields, [
             'id'           => 0,
-            // Aliases are unique within a language  independent scope, so suffix the draft's to keep it distinct.
-            'alias'        => $sourceItem['alias'] . '-' . strtolower($targetLanguage),
             'language'     => $targetLanguage,
             // Joomla links the draft into this association group on save.
             'associations' => $associations,
         ]);
+
+        // The component builds the alias from the translated title; only suffix on a clash with the source.
+        $slug = ApplicationHelper::stringURLSafe((string) ($fields['title'] ?? ''), $targetLanguage);
+
+        if ($slug === $sourceItem['alias']) {
+            $draft['alias'] = $slug . '-' . strtolower($targetLanguage);
+        }
 
         // Carry the source's untranslated structural fields onto the draft unchanged.
         foreach ((array) ($properties['draftCopyFields'] ?? []) as $field) {
