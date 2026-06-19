@@ -16,8 +16,25 @@
             "type_id": "1",
             "context_custom_fields": "com_content.article",
             "context_associations": "com_content.item",
+            "draftCopyFields": ["catid", "access", "created_by"],
+            "stateField": "state",
             "associatedFields": { "catid": { "contentType": "category" } },
             "m2m_relation": "tag"
+        },
+        "com_categories.category": {
+            "translatableFields": [
+                "title",
+                "note",
+                "description",
+                "metadesc",
+                "metakey"
+            ],
+            "component": "com_categories",
+            "model": "Category",
+            "table": "#__categories",
+            "context_associations": "com_categories.item",
+            "draftCopyFields": ["parent_id", "extension", "access", "created_user_id"],
+            "stateField": "published"
         }
     }
 }

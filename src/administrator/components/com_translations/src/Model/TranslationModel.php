@@ -367,17 +367,20 @@ class TranslationModel extends BaseDatabaseModel
 
         $draft = array_merge($fields, [
             'id'           => 0,
-            // Aliases are unique per category regardless of language, so the draft cannot reuse the source's.
+            // Aliases are unique within a language  independent scope, so suffix the draft's to keep it distinct.
             'alias'        => $sourceItem['alias'] . '-' . strtolower($targetLanguage),
             'language'     => $targetLanguage,
-            'catid'        => (int) $sourceItem['catid'],
-            // Keep the draft unpublished until a translator approves it.
-            'state'        => 0,
-            'access'       => (int) $sourceItem['access'],
-            'created_by'   => (int) $sourceItem['created_by'],
             // Joomla links the draft into this association group on save.
             'associations' => $associations,
         ]);
+
+        // Carry the source's untranslated structural fields onto the draft unchanged.
+        foreach ((array) ($properties['draftCopyFields'] ?? []) as $field) {
+            $draft[$field] = $sourceItem[$field] ?? null;
+        }
+
+        // Keep the draft unpublished until a translator approves it.
+        $draft[(string) ($properties['stateField'] ?? '')] = 0;
 
         // com_content combines intro and full text into one body field; only relevant when those fields exist.
         if (isset($fields['introtext']) || isset($fields['fulltext'])) {
