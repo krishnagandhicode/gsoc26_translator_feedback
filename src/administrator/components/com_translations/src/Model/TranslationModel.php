@@ -62,6 +62,12 @@ class TranslationModel extends BaseDatabaseModel
         $properties = $this->getContentTypeProperties($contentType);
         $sourceItem = $this->getSourceItem($sourceItemId, (string) ($properties['table'] ?? ''));
 
+        // Some tables hold several extensions' items; only translate the mapped extension.
+        if (isset($properties['limitToExtension'])
+            && ($sourceItem['extension'] ?? null) !== $properties['limitToExtension']) {
+            throw new \RuntimeException(\sprintf('Item %d is outside the %s extension.', $sourceItemId, $properties['limitToExtension']));
+        }
+
         // An all-languages item is shown for every language, so there is nothing to translate.
         if ($sourceItem['language'] === '*') {
             throw new \RuntimeException(\sprintf('Item %d applies to all languages.', $sourceItemId));

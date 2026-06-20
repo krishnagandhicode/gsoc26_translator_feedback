@@ -30,6 +30,7 @@
             "component": "com_categories",
             "model": "Category",
             "table": "#__categories",
+            "limitToExtension": "com_content",
             "context_associations": "com_categories.item",
             "draftCopyFields": ["parent_id", "extension", "access", "created_user_id"],
             "stateField": "published"
