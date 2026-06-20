@@ -366,18 +366,18 @@ class TranslationModel extends BaseDatabaseModel
 
         $fields = $this->packTranslatedFields($sourceItem, $translatableFields, $translated);
 
-        // The draft must be saved together with the source's existing association group,
-        // otherwise core re-keys the group and earlier drafts fall out of it.
-        $associations = $this->getAssociationGroup((int) $sourceItem['id'], (string) ($properties['context_associations'] ?? ''), (string) ($properties['table'] ?? ''));
-
-        $associations[$sourceItem['language']] = (int) $sourceItem['id'];
-
         $draft = array_merge($fields, [
-            'id'           => 0,
-            'language'     => $targetLanguage,
-            // Joomla links the draft into this association group on save.
-            'associations' => $associations,
+            'id'       => 0,
+            'language' => $targetLanguage,
         ]);
+
+        // Link the draft into the source's association group; skip it for non-associable types (e.g. tags).
+        if (!empty($properties['context_associations'])) {
+            // Save with the existing group so core does not re-key it and drop earlier drafts.
+            $associations = $this->getAssociationGroup((int) $sourceItem['id'], (string) $properties['context_associations'], (string) ($properties['table'] ?? ''));
+            $associations[$sourceItem['language']] = (int) $sourceItem['id'];
+            $draft['associations'] = $associations;
+        }
 
         // The component builds the alias from the translated title; only suffix on a clash with the source.
         $slug = ApplicationHelper::stringURLSafe((string) ($fields['title'] ?? ''), $targetLanguage);
