@@ -47,6 +47,8 @@
             "component": "com_tags",
             "model": "Tag",
             "table": "#__tags",
+            "context_associations": "com_tags.item",
+            "associationsByModel": false,
             "draftCopyFields": ["parent_id", "access", "created_user_id"],
             "stateField": "published"
         }

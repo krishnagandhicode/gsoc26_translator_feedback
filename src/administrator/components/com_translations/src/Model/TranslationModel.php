@@ -336,8 +336,8 @@ class TranslationModel extends BaseDatabaseModel
      * Create the unpublished draft for one target language.
      *
      * The draft is saved through the managing component's model so versioning, events and
-     * association handling run exactly as for a hand created item. Passing the source
-     * item under 'associations' makes core write the #__associations link itself.
+     * associations run as for a hand created item. A model with an associationsContext
+     * writes the #__associations link itself; tags, whose model does not, get it written here.
      *
      * @param   array                    $sourceItem      The source item's column values.
      * @param   string                   $targetLanguage  The target language code.
@@ -371,12 +371,19 @@ class TranslationModel extends BaseDatabaseModel
             'language' => $targetLanguage,
         ]);
 
-        // Link the draft into the source's association group; skip it for non-associable types (e.g. tags).
-        if (!empty($properties['context_associations'])) {
-            // Save with the existing group so core does not re-key it and drop earlier drafts.
-            $associations = $this->getAssociationGroup((int) $sourceItem['id'], (string) $properties['context_associations'], (string) ($properties['table'] ?? ''));
+        // Join the draft to the source's existing association group rather than a fresh one.
+        $context                 = (string) ($properties['context_associations'] ?? '');
+        $modelWritesAssociations = (bool) ($properties['associationsByModel'] ?? true);
+        $associations            = [];
+
+        if ($context !== '') {
+            $associations = $this->getAssociationGroup((int) $sourceItem['id'], $context, (string) ($properties['table'] ?? ''));
             $associations[$sourceItem['language']] = (int) $sourceItem['id'];
-            $draft['associations'] = $associations;
+
+            // A model with an associationsContext writes the link itself on save.
+            if ($modelWritesAssociations) {
+                $draft['associations'] = $associations;
+            }
         }
 
         // The component builds the alias from the translated title; only suffix on a clash with the source.
@@ -408,6 +415,12 @@ class TranslationModel extends BaseDatabaseModel
             throw new \RuntimeException(
                 \sprintf('Could not create the %s draft for item %d.', $targetLanguage, (int) $sourceItem['id'])
             );
+        }
+
+        // A model without an associationsContext (tags) leaves the link unwritten, so write it here.
+        if ($context !== '' && !$modelWritesAssociations) {
+            $associations[$targetLanguage] = (int) $model->getState($model->getName() . '.id');
+            $this->writeAssociations($associations, $context);
         }
     }
 
@@ -451,6 +464,57 @@ class TranslationModel extends BaseDatabaseModel
         $db->setQuery($query);
 
         return $db->loadAssocList('language', 'id');
+    }
+
+    /**
+     * Write the source item's association group to #__associations directly.
+     *
+     * Mirrors the write in AdminModel::save(): the items are removed and re-inserted
+     * under one shared key, so every language version stays in one group. Needed for
+     * content types whose model sets no associationsContext (tags), where save() leaves
+     * the link unwritten.
+     *
+     * @param   array   $idsByLanguage  The group's item ids keyed by language, including the new draft.
+     * @param   string  $context        The associations context, e.g. 'com_tags.item'.
+     *
+     * @return  void
+     *
+     * @since   0.4.0
+     */
+    private function writeAssociations(array $idsByLanguage, string $context): void
+    {
+        $ids = array_values(array_filter(array_map('intval', $idsByLanguage)));
+
+        // A lone item has nothing to associate with.
+        if (\count($ids) < 2) {
+            return;
+        }
+
+        $db = $this->getDatabase();
+
+        // Clear the items' current rows so the whole group is re-keyed in one place.
+        $query = $db->getQuery(true)
+            ->delete($db->quoteName('#__associations'))
+            ->where($db->quoteName('context') . ' = :context')
+            ->whereIn($db->quoteName('id'), $ids, ParameterType::INTEGER)
+            ->bind(':context', $context, ParameterType::STRING);
+        $db->setQuery($query);
+        $db->execute();
+
+        // One shared key ties the language versions together, the way core keys them.
+        $key   = md5((string) json_encode($idsByLanguage));
+        $query = $db->getQuery(true)
+            ->insert($db->quoteName('#__associations'))
+            ->columns($db->quoteName(['id', 'context', 'key']));
+
+        foreach ($ids as $id) {
+            $query->values(
+                implode(',', $query->bindArray([$id, $context, $key], [ParameterType::INTEGER, ParameterType::STRING, ParameterType::STRING]))
+            );
+        }
+
+        $db->setQuery($query);
+        $db->execute();
     }
 
     /**
