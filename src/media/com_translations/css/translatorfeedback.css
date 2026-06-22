@@ -16,11 +16,32 @@
     font-size: 1.1rem;
 }
 
-/* Cap the body height so a long source scrolls inside the card. */
+/* Fixed to roughly the editor's height so the panes line up, with a longer source scrolling inside the card. */
 .translations-readonly-body {
-    min-height: 6rem;
-    max-height: 24rem;
+    height: 28.5rem;
     overflow-y: auto;
+}
+
+/* Centre the placeholder when the source body is empty so the fixed-height card does not read as a void. */
+.translations-readonly-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Multi-line source values (meta description, keywords) match their three-row textarea. */
+.translations-readonly-multiline {
+    min-height: 5.5rem;
+}
+
+/* Section headings that group the field rows; explicit size so Atum's heading reset does not shrink them. */
+.translations-section-heading {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    font-size: 1.4rem;
+    font-weight: 700;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
 }
 
 /* Side by side: match the header height to the editor so the two bodies line up. */
