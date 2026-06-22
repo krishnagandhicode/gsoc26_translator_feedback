@@ -25,6 +25,7 @@ use Joomla\CMS\MVC\Factory\MVCFactoryServiceInterface;
 use Joomla\CMS\MVC\Model\FormModel;
 use Joomla\Component\Content\Administrator\Model\ArticleModel;
 use Joomla\Database\ParameterType;
+use Joomla\Registry\Registry;
 
 /**
  * Side-by-side translation feedback model.
@@ -45,6 +46,22 @@ class TranslatorfeedbackModel extends FormModel
      * @since  0.2.0
      */
     private $item;
+
+    /**
+     * The article's plain translatable columns in #__content.
+     *
+     * @var    string[]
+     * @since  0.4.0
+     */
+    private const ARTICLE_FIELDS = ['title', 'introtext', 'fulltext', 'metadesc', 'metakey', 'note'];
+
+    /**
+     * The article's translatable sub-fields inside the #__content images JSON column.
+     *
+     * @var    string[]
+     * @since  0.4.0
+     */
+    private const ARTICLE_IMAGE_FIELDS = ['image_intro_alt', 'image_intro_caption', 'image_fulltext_alt', 'image_fulltext_caption'];
 
     /**
      * Read the request state: which source article and which target language.
@@ -92,11 +109,14 @@ class TranslatorfeedbackModel extends FormModel
             return [];
         }
 
-        return [
-            'translation_title'     => $item->translation_article->title,
-            'translation_introtext' => $item->translation_article->introtext,
-            'translation_fulltext'  => $item->translation_article->fulltext,
-        ];
+        $values = $this->flattenArticleFields($item->translation_article);
+        $data   = [];
+
+        foreach ($values as $field => $value) {
+            $data['translation_' . $field] = $value;
+        }
+
+        return $data;
     }
 
     /**
@@ -106,7 +126,7 @@ class TranslatorfeedbackModel extends FormModel
      * and versioning run; only the translated fields are overwritten on the existing
      * article. The translation article is resolved (via associations) by getItem().
      *
-     * @param   array                    $data         Submitted form values (translation_title/introtext/fulltext).
+     * @param   array                    $data         Submitted form values, keyed translation_<field>.
      * @param   CMSApplicationInterface  $application  The application, used to boot com_content.
      *
      * @return  boolean  True on success.
@@ -149,30 +169,32 @@ class TranslatorfeedbackModel extends FormModel
         // Snapshot the translation as it stands now, before the overwrite below replaces it.
         // This is the machine draft (what was produced before this correction); once #__content
         // is overwritten these values exist nowhere else, so they must be captured for the feedback pair.
-        $machineDraft = [
-            'title'     => (string) ($article['title'] ?? ''), // those #__content columns can be null in theory so empty string rather than carry a null into feedback later.
-            'introtext' => (string) ($article['introtext'] ?? ''),
-            'fulltext'  => (string) ($article['fulltext'] ?? ''),
-        ];
+        $machineDraft = $this->flattenArticleFields($article);
 
-        // Overwrite only the three translated fields; for anything not submitted, keep the article's current value.
-        $introtext = $data['translation_introtext'] ?? ($article['introtext'] ?? '');
-        $fulltext  = $data['translation_fulltext'] ?? ($article['fulltext'] ?? '');
+        // Overwrite each translated column; for anything not submitted, keep the article's current value.
+        foreach (self::ARTICLE_FIELDS as $field) {
+            $article[$field] = $data['translation_' . $field] ?? ($article[$field] ?? '');
+        }
 
-        $article['title']     = $data['translation_title'] ?? ($article['title'] ?? '');
-        $article['introtext'] = $introtext;
-        $article['fulltext']  = $fulltext;
+        // The alt and caption fields live in the images JSON column; set those keys in place so the
+        // image paths and any other keys survive.
+        $images = new Registry($article['images'] ?? '');
+
+        foreach (self::ARTICLE_IMAGE_FIELDS as $field) {
+            $images->set($field, $data['translation_' . $field] ?? $images->get($field, ''));
+        }
+
+        $article['images'] = $images->toString();
 
         // The values now on the article are the human correction - the counterpart to the
         // machine draft captured above. Paired field by field, these become the feedback rows.
-        $humanCorrection = [
-            'title'     => (string) $article['title'],
-            'introtext' => (string) $article['introtext'],
-            'fulltext'  => (string) $article['fulltext'],
-        ];
+        $humanCorrection = $this->flattenArticleFields($article);
 
         // com_content's edit form works on a single combined body; keep it consistent with the two columns.
-        $article['articletext'] = trim((string) $fulltext) !== ''
+        $introtext = (string) $article['introtext'];
+        $fulltext  = (string) $article['fulltext'];
+
+        $article['articletext'] = trim($fulltext) !== ''
             ? $introtext . '<hr id="system-readmore">' . $fulltext
             : $introtext;
 
@@ -242,8 +264,8 @@ class TranslatorfeedbackModel extends FormModel
      * fall back to their table defaults; diff_data is filled later by the diff feature.
      *
      * @param   integer  $queueId          The queue row this feedback belongs to.
-     * @param   array    $machineDraft     Pre-edit field values (title/introtext/fulltext).
-     * @param   array    $humanCorrection  Submitted field values (title/introtext/fulltext).
+     * @param   array    $machineDraft     Pre-edit field values keyed by field.
+     * @param   array    $humanCorrection  Post-edit field values keyed by field.
      *
      * @return  void
      *
@@ -253,27 +275,64 @@ class TranslatorfeedbackModel extends FormModel
     {
         $item           = $this->getItem();
         $source         = $item->source_article;
+        $sourceValues   = $source !== null ? $this->flattenArticleFields($source) : [];
         $targetLanguage = (string) $item->target_language;
         $translatorId   = (int) $this->getCurrentUser()->id;
         $db             = $this->getDatabase();
 
-        foreach (['title', 'introtext', 'fulltext'] as $field) {
+        foreach ($machineDraft as $field => $machineValue) {
             // Only changed fields are worth learning from - an untouched field is not a correction.
-            if ($humanCorrection[$field] === $machineDraft[$field]) {
+            if (($humanCorrection[$field] ?? '') === $machineValue) {
                 continue;
             }
 
             $row = (object) [
                 'queue_id'         => $queueId,
-                'source_text'      => $source !== null ? (string) ($source->$field ?? '') : '',
-                'machine_draft'    => $machineDraft[$field],
-                'human_correction' => $humanCorrection[$field],
+                'source_text'      => $sourceValues[$field] ?? '',
+                'machine_draft'    => $machineValue,
+                'human_correction' => $humanCorrection[$field] ?? '',
                 'target_language'  => $targetLanguage,
                 'translator_id'    => $translatorId,
             ];
 
             $db->insertObject('#__translations_feedback', $row);
         }
+    }
+
+    /**
+     * Flatten an article's translatable fields into one value map keyed by field.
+     *
+     * The plain columns are read directly; the alt and caption fields are read from the
+     * images JSON column. Accepts the raw row (array) or a loaded article (object), so the
+     * same field set drives the form, the save and the feedback pairs.
+     *
+     * @param   array|object  $article  The article row or object.
+     *
+     * @return  array  The field values keyed by field name.
+     *
+     * @since   0.4.0
+     */
+    private function flattenArticleFields($article): array
+    {
+        $read = static function (string $key) use ($article): string {
+            $value = \is_array($article) ? ($article[$key] ?? '') : ($article->$key ?? '');
+
+            return (string) $value;
+        };
+
+        $values = [];
+
+        foreach (self::ARTICLE_FIELDS as $field) {
+            $values[$field] = $read($field);
+        }
+
+        $images = new Registry($read('images'));
+
+        foreach (self::ARTICLE_IMAGE_FIELDS as $field) {
+            $values[$field] = (string) $images->get($field, '');
+        }
+
+        return $values;
     }
 
     /**
@@ -333,7 +392,7 @@ class TranslatorfeedbackModel extends FormModel
 
         $db    = $this->getDatabase();
         $query = $db->getQuery(true)
-            ->select($db->quoteName(['id', 'title', 'introtext', 'fulltext', 'language']))
+            ->select($db->quoteName(['id', 'title', 'introtext', 'fulltext', 'metadesc', 'metakey', 'note', 'images', 'language']))
             ->from($db->quoteName('#__content'))
             ->where($db->quoteName('id') . ' = :id')
             ->bind(':id', $id, ParameterType::INTEGER);
