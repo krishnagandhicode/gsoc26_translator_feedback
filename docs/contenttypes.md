@@ -100,6 +100,20 @@ language-specific container. Menu items live in a per-language menu, so this is 
 `mainmenu` becomes `mainmenu-fr-fr`), creates that menu if it does not yet exist, and
 places the draft in it.
 
+**`context_custom_fields`** (string, optional) - the field context the item's translatable
+custom fields are read from. Articles use `com_content.article`; categories use
+`com_content.categories` (the context the fields system rewrites a category to, which
+differs from the map key). Omit it for a type without translatable custom fields. The
+translatable field types are text, textarea, editor and note; other custom fields are
+copied to the draft unchanged.
+
+**`copyCustomFieldAssignments`** (boolean, optional, default `false`) - whether to copy the
+source category's directly assigned custom fields onto the translated category. A category's
+custom fields are scoped to the category id, so a field assigned only to the source category
+does not reach the new draft on save; the category entry sets this to `true` so those fields
+are assigned to the draft and their values written. Global and parent-assigned fields already
+reach the draft.
+
 **`associatedFields`** (object, optional) - foreign-key fields that point at another
 content type and should be re-pointed at the translated related item. For an article,
 `{ "catid": { "contentType": "category" } }` says the draft's `catid` should become the
@@ -122,6 +136,7 @@ related-item remapping.
     "model": "Article",
     "table": "#__content",
     "context_associations": "com_content.item",
+    "context_custom_fields": "com_content.article",
     "draftCopyFields": ["catid", "access", "created_by"],
     "stateField": "state",
     "associatedFields": { "catid": { "contentType": "category" } },
