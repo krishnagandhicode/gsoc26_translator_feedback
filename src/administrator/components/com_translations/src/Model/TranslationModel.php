@@ -20,6 +20,7 @@ use Joomla\CMS\Extension\ComponentInterface;
 use Joomla\CMS\MVC\Factory\MVCFactoryServiceInterface;
 use Joomla\CMS\MVC\Model\AdminModel;
 use Joomla\CMS\MVC\Model\BaseDatabaseModel;
+use Joomla\Component\Fields\Administrator\Helper\FieldsHelper;
 use Joomla\Component\Translations\Administrator\Helper\ContentTypesHelper;
 use Joomla\Database\ParameterType;
 use Joomla\Registry\Registry;
@@ -33,6 +34,23 @@ use Joomla\Registry\Registry;
  */
 class TranslationModel extends BaseDatabaseModel
 {
+    /**
+     * Custom-field types whose values are translatable.
+     *
+     * @var    string[]
+     * @since  0.4.0
+     */
+    private const TRANSLATABLE_FIELD_TYPES = ['text', 'textarea', 'editor', 'note'];
+
+    /**
+     * Prefix that namespaces a custom field in the combined strings collection,
+     * so a field never collides with a column name.
+     *
+     * @var    string
+     * @since  0.4.0
+     */
+    private const CUSTOM_FIELD_PREFIX = 'com_fields:';
+
     /**
      * Translate a source item into one target language.
      *
@@ -216,6 +234,48 @@ class TranslationModel extends BaseDatabaseModel
     }
 
     /**
+     * Gather an item's custom-field values, keyed by field name.
+     *
+     * Read with FieldsHelper directly (not the display-preparing onContentPrepare), so the raw
+     * stored values are returned rather than their rendered HTML. Every non-empty field is
+     * collected, each flagged whether its type (text, textarea, editor, note) is translatable, so
+     * the caller can translate those and copy the rest unchanged. A content type with no
+     * custom-field context returns nothing.
+     *
+     * @param   array  $sourceItem  The source item's column values.
+     * @param   array  $properties  The content type's properties from the map.
+     *
+     * @return  array  Per field name, ['value' => raw value, 'translatable' => bool].
+     *
+     * @since   0.4.0
+     */
+    private function collectCustomFields(array $sourceItem, array $properties): array
+    {
+        $context = (string) ($properties['context_custom_fields'] ?? '');
+
+        if ($context === '') {
+            return [];
+        }
+
+        $customFields = [];
+
+        foreach (FieldsHelper::getFields($context, $sourceItem) as $field) {
+            $value = (string) $field->rawvalue;
+
+            if (trim($value) === '') {
+                continue;
+            }
+
+            $customFields[$field->name] = [
+                'value'        => $value,
+                'translatable' => \in_array($field->type, self::TRANSLATABLE_FIELD_TYPES, true),
+            ];
+        }
+
+        return $customFields;
+    }
+
+    /**
      * Stand-in translation until a translation provider plugin supplies the real one.
      *
      * Returns each string prefixed with the target language so a draft is visibly "translated"
@@ -322,16 +382,38 @@ class TranslationModel extends BaseDatabaseModel
             $model->setState($stateKey, $stateValue);
         }
 
-        // Hand the whole collection over together, then map each translated value back to its field.
+        // Hand all translatable strings over together: the item's columns and its translatable custom fields.
         $translatableFields = (array) ($properties['translatableFields'] ?? []);
-        $translated         = $this->mockTranslate($this->collectTranslatableStrings($sourceItem, $translatableFields), $targetLanguage);
+        $customFields       = $this->collectCustomFields($sourceItem, $properties);
+        $strings            = $this->collectTranslatableStrings($sourceItem, $translatableFields);
 
-        $fields = $this->packTranslatedFields($sourceItem, $translatableFields, $translated);
+        foreach ($customFields as $name => $customField) {
+            if ($customField['translatable']) {
+                $strings[self::CUSTOM_FIELD_PREFIX . $name] = $customField['value'];
+            }
+        }
+
+        $translated = $this->mockTranslate($strings, $targetLanguage);
+        $fields     = $this->packTranslatedFields($sourceItem, $translatableFields, $translated);
 
         $draft = array_merge($fields, [
             'id'       => 0,
             'language' => $targetLanguage,
         ]);
+
+        // Carry every custom field onto the draft (the fields plugin's onContentAfterSave stores them, keyed by
+        // name): the translatable ones translated, the rest copied unchanged so a non-translated field is not lost.
+        $draftCustomFields = [];
+
+        foreach ($customFields as $name => $customField) {
+            $draftCustomFields[$name] = $customField['translatable']
+                ? ($translated[self::CUSTOM_FIELD_PREFIX . $name] ?? $customField['value'])
+                : $customField['value'];
+        }
+
+        if ($draftCustomFields !== []) {
+            $draft['com_fields'] = $draftCustomFields;
+        }
 
         // Join the draft to the source's existing association group rather than a fresh one.
         $context                 = (string) ($properties['context_associations'] ?? '');

@@ -14,6 +14,7 @@
             "model": "Article",
             "table": "#__content",
             "context_associations": "com_content.item",
+            "context_custom_fields": "com_content.article",
             "draftCopyFields": ["catid", "access", "created_by"],
             "stateField": "state",
             "associatedFields": { "catid": { "contentType": "category" } },
@@ -32,6 +33,7 @@
             "table": "#__categories",
             "limitToExtension": "com_content",
             "context_associations": "com_categories.item",
+            "context_custom_fields": "com_content.categories",
             "draftCopyFields": ["parent_id", "extension", "access", "created_user_id"],
             "stateField": "published",
             "modelState": { "category.extension": "com_content" }
