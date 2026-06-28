@@ -24,6 +24,7 @@ use Joomla\CMS\Log\Log;
 use Joomla\CMS\MVC\Factory\MVCFactoryServiceInterface;
 use Joomla\CMS\MVC\Model\AdminModel;
 use Joomla\CMS\MVC\Model\FormModel;
+use Joomla\Component\Fields\Administrator\Helper\FieldsHelper;
 use Joomla\Component\Translations\Administrator\Helper\ContentTypesHelper;
 use Joomla\Database\ParameterType;
 use Joomla\Registry\Registry;
@@ -40,6 +41,14 @@ use Joomla\Registry\Registry;
  */
 class TranslatorfeedbackModel extends FormModel
 {
+    /**
+     * Custom-field types whose values are translatable.
+     *
+     * @var    string[]
+     * @since  0.4.0
+     */
+    private const TRANSLATABLE_FIELD_TYPES = ['text', 'textarea', 'editor', 'note'];
+
     /**
      * Cached source + translation pair (see getItem()).
      *
@@ -359,10 +368,50 @@ class TranslatorfeedbackModel extends FormModel
     }
 
     /**
+     * Gather an item's translatable custom-field values, keyed by field name.
+     *
+     * Read with FieldsHelper directly (the raw stored value, not the display HTML), the same read
+     * the producer uses, and limited to the translatable types so the editor shows only fields a
+     * translator can correct. A content type with no custom-field context returns nothing.
+     *
+     * @param   array  $item        The item's column values.
+     * @param   array  $properties  The content type's properties from the map.
+     *
+     * @return  array  Per field name, ['label' => string, 'value' => string, 'type' => string].
+     *
+     * @since   0.4.0
+     */
+    private function collectCustomFields(array $item, array $properties): array
+    {
+        $context = (string) ($properties['context_custom_fields'] ?? '');
+
+        if ($context === '') {
+            return [];
+        }
+
+        $customFields = [];
+
+        foreach (FieldsHelper::getFields($context, $item) as $field) {
+            if (!\in_array($field->type, self::TRANSLATABLE_FIELD_TYPES, true)) {
+                continue;
+            }
+
+            $customFields[$field->name] = [
+                'label' => (string) $field->label,
+                'value' => (string) $field->rawvalue,
+                'type'  => (string) $field->type,
+            ];
+        }
+
+        return $customFields;
+    }
+
+    /**
      * Get the source item and its target-language translation.
      *
-     * @return  object  { content_id, content_type, target_language, source_language,
-     *                    source_item, translation_item, source_values, translatable_fields } - the items may be null.
+     * @return  object  { content_id, content_type, target_language, source_language, source_item,
+     *                    translation_item, source_values, source_custom_fields, translation_custom_fields,
+     *                    translatable_fields } - the items may be null.
      *
      * @since   0.2.0
      */
@@ -395,14 +444,16 @@ class TranslatorfeedbackModel extends FormModel
         }
 
         $this->item = (object) [
-            'content_id'          => $contentId,
-            'content_type'        => $contentType,
-            'target_language'     => $targetLanguage,
-            'source_language'     => $sourceItem !== null ? (string) ($sourceItem['language'] ?? '') : '',
-            'source_item'         => $sourceItem,
-            'translation_item'    => $translationItem,
-            'source_values'       => $sourceItem !== null ? $this->flattenFields($sourceItem, $translatableFields) : [],
-            'translatable_fields' => $translatableFields,
+            'content_id'                => $contentId,
+            'content_type'              => $contentType,
+            'target_language'           => $targetLanguage,
+            'source_language'           => $sourceItem !== null ? (string) ($sourceItem['language'] ?? '') : '',
+            'source_item'               => $sourceItem,
+            'translation_item'          => $translationItem,
+            'source_values'             => $sourceItem !== null ? $this->flattenFields($sourceItem, $translatableFields) : [],
+            'source_custom_fields'      => $sourceItem !== null ? $this->collectCustomFields($sourceItem, $properties) : [],
+            'translation_custom_fields' => $translationItem !== null ? $this->collectCustomFields($translationItem, $properties) : [],
+            'translatable_fields'       => $translatableFields,
         ];
 
         return $this->item;
