@@ -15,6 +15,7 @@ namespace Joomla\Component\Translations\Administrator\Model;
 // phpcs:enable PSR1.Files.SideEffects
 
 use Joomla\CMS\Application\CMSApplicationInterface;
+use Joomla\CMS\Event\CustomFields\PrepareDomEvent;
 use Joomla\CMS\Extension\ComponentInterface;
 use Joomla\CMS\Factory;
 
@@ -27,6 +28,7 @@ use Joomla\CMS\MVC\Model\FormModel;
 use Joomla\Component\Fields\Administrator\Helper\FieldsHelper;
 use Joomla\Component\Translations\Administrator\Helper\ContentTypesHelper;
 use Joomla\Database\ParameterType;
+use Joomla\Event\DispatcherInterface;
 use Joomla\Registry\Registry;
 
 /**
@@ -91,7 +93,87 @@ class TranslatorfeedbackModel extends FormModel
         $source = 'translatorfeedback_' . $this->contentTypeKey();
 
         // 'jform' namespaces the fields, load_data triggers loadFormData() below.
-        return $this->loadForm('com_translations.' . $source, $source, ['control' => 'jform', 'load_data' => $loadData]);
+        $form = $this->loadForm('com_translations.' . $source, $source, ['control' => 'jform', 'load_data' => $loadData]);
+
+        // Custom fields vary per item, so inject the draft's translatable ones into the form at prepare time.
+        $item = $this->getItem();
+
+        if ($item->translation_item !== null) {
+            $this->injectCustomFields($form, $item->translation_item, ContentTypesHelper::getProperties($item->content_type));
+        }
+
+        return $form;
+    }
+
+    /**
+     * Inject the draft's translatable custom fields into the feedback form.
+     *
+     * Custom fields are not declared in the static form because they vary per item, so they are
+     * built at prepare time the way core's Fields tab does (FieldsHelper::prepareForm): each field
+     * type plugin turns its field into a <field> node through onCustomFieldsPrepareDom, the nodes
+     * are merged into the form, and each is set to the draft's stored value. Only the translatable
+     * types are added, so a translator edits just the fields they can correct.
+     *
+     * @param   Form   $form        The feedback form.
+     * @param   array  $draftItem   The translation draft's column values.
+     * @param   array  $properties  The content type's properties from the map.
+     *
+     * @return  void
+     *
+     * @since   0.4.0
+     */
+    private function injectCustomFields(Form $form, array $draftItem, array $properties): void
+    {
+        $context = (string) ($properties['context_custom_fields'] ?? '');
+
+        if ($context === '') {
+            return;
+        }
+
+        // Keep only the fields a translator can correct.
+        $fields = [];
+
+        foreach (FieldsHelper::getFields($context, $draftItem) as $field) {
+            if (\in_array($field->type, self::TRANSLATABLE_FIELD_TYPES, true)) {
+                $fields[] = $field;
+            }
+        }
+
+        if ($fields === []) {
+            return;
+        }
+
+        // Build the custom field form the way FieldsHelper::prepareForm() does.
+        $xml        = new \DOMDocument('1.0', 'UTF-8');
+        $fieldsNode = $xml->appendChild(new \DOMElement('form'))->appendChild(new \DOMElement('fields'));
+        $fieldsNode->setAttribute('name', 'com_fields');
+
+        // The field type plugins are registered on the global dispatcher (the getFields read above imports them
+        // there), so the nodes are built by dispatching on it; the model's own dispatcher would not reach them.
+        /** @var DispatcherInterface $dispatcher */
+        $dispatcher = Factory::getContainer()->get(DispatcherInterface::class);
+
+        foreach ($fields as $field) {
+            $dispatcher->dispatch('onCustomFieldsPrepareDom', new PrepareDomEvent('onCustomFieldsPrepareDom', [
+                'subject'  => $field,
+                'fieldset' => $fieldsNode,
+                'form'     => $form,
+            ]));
+        }
+
+        $form->load((string) $xml->saveXML());
+
+        // Set each field to the draft's value and size it to match its read-only source pane.
+        foreach ($fields as $field) {
+            if ($field->rawvalue !== null) {
+                $form->setValue($field->name, 'com_fields', $field->rawvalue);
+            }
+
+            // A custom textarea carries its own row count; match it to the declared textareas (the editor keeps its natural height).
+            if ($field->type === 'textarea') {
+                $form->setFieldAttribute($field->name, 'rows', '3', 'com_fields');
+            }
+        }
     }
 
     /**
