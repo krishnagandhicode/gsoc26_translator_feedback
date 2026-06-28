@@ -17,7 +17,7 @@
             "context_custom_fields": "com_content.article",
             "draftCopyFields": ["catid", "access", "created_by"],
             "stateField": "state",
-            "associatedFields": { "catid": { "contentType": "category" } },
+            "associatedFields": { "catid": "com_categories.category" },
             "m2m_relation": "tag"
         },
         "com_categories.category": {

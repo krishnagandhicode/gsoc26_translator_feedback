@@ -525,6 +525,21 @@ class TranslationModel extends BaseDatabaseModel
             $draft[$field] = $sourceItem[$field] ?? null;
         }
 
+        // Repoint single foreign keys (such as catid) at the related item's translation, keeping the source's when none exists yet.
+        foreach ((array) ($properties['associatedFields'] ?? []) as $field => $relatedType) {
+            $relatedItemId = (int) ($sourceItem[$field] ?? 0);
+
+            if ($relatedItemId === 0) {
+                continue;
+            }
+
+            $translatedId = $this->translatedRelatedId($relatedItemId, (string) $relatedType, $targetLanguage);
+
+            if ($translatedId !== null) {
+                $draft[$field] = $translatedId;
+            }
+        }
+
         // Keep the draft unpublished until a translator approves it.
         $draft[(string) ($properties['stateField'] ?? '')] = 0;
 
@@ -578,6 +593,32 @@ class TranslationModel extends BaseDatabaseModel
                 $application
             );
         }
+    }
+
+    /**
+     * Find a related item's translation in the target language.
+     *
+     * Looks up the related item's association group, the same key mechanism the item itself uses,
+     * and returns its target language member, or null when the related item has no translation yet.
+     *
+     * @param   integer  $relatedItemId   The source related item id, e.g. a category id.
+     * @param   string   $relatedType     The related content type alias, e.g. 'com_categories.category'.
+     * @param   string   $targetLanguage  The target language code.
+     *
+     * @return  integer|null  The translated related item id, or null when it has none.
+     *
+     * @since   0.4.0
+     */
+    private function translatedRelatedId(int $relatedItemId, string $relatedType, string $targetLanguage): ?int
+    {
+        $properties = ContentTypesHelper::getProperties($relatedType);
+        $group      = $this->getAssociationGroup(
+            $relatedItemId,
+            (string) ($properties['context_associations'] ?? ''),
+            (string) ($properties['table'] ?? '')
+        );
+
+        return isset($group[$targetLanguage]) ? (int) $group[$targetLanguage] : null;
     }
 
     /**
