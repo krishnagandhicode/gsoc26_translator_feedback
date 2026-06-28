@@ -52,6 +52,14 @@ class TranslatorfeedbackModel extends FormModel
     private const TRANSLATABLE_FIELD_TYPES = ['text', 'textarea', 'editor', 'note'];
 
     /**
+     * Prefix that namespaces a custom field in the feedback maps, so it never collides with a column field.
+     *
+     * @var    string
+     * @since  0.4.0
+     */
+    private const CUSTOM_FIELD_PREFIX = 'com_fields:';
+
+    /**
      * Cached source + translation pair (see getItem()).
      *
      * @var    object|null
@@ -208,7 +216,7 @@ class TranslatorfeedbackModel extends FormModel
      * and versioning run; only the translatable fields are overwritten on the existing
      * draft. The translation is resolved (via associations) by getItem().
      *
-     * @param   array                    $data         Submitted form values, keyed translation_<field>.
+     * @param   array                    $data         Submitted form values, keyed translation_<field> plus a com_fields array.
      * @param   CMSApplicationInterface  $application  The application, used to boot the component.
      *
      * @return  boolean  True on success.
@@ -245,7 +253,8 @@ class TranslatorfeedbackModel extends FormModel
         // Snapshot the translation as it stands now, before the overwrite below replaces it.
         // This is the machine draft (what was produced before this correction); once the row
         // is overwritten these values exist nowhere else, so they must be captured for the feedback pair.
-        $machineDraft = $this->flattenFields($row, $translatableFields);
+        $machineDraft        = $this->flattenFields($row, $translatableFields);
+        $machineCustomFields = $this->collectCustomFields($row, $properties);
 
         // Overwrite each translated field; anything not submitted keeps the row's current value.
         $row = $this->applyTranslation($row, $translatableFields, $data);
@@ -253,6 +262,19 @@ class TranslatorfeedbackModel extends FormModel
         // The values now on the row are the human correction - the counterpart to the
         // machine draft captured above. Paired field by field, these become the feedback rows.
         $humanCorrection = $this->flattenFields($row, $translatableFields);
+
+        // Custom fields are stored apart from the columns: put the corrected values on the draft for the
+        // managing model to persist, and fold both sides into the feedback maps under a namespaced key.
+        $submittedCustomFields = (array) ($data['com_fields'] ?? []);
+
+        foreach ($machineCustomFields as $name => $customField) {
+            $machineDraft[self::CUSTOM_FIELD_PREFIX . $name]    = $customField['value'];
+            $humanCorrection[self::CUSTOM_FIELD_PREFIX . $name] = (string) ($submittedCustomFields[$name] ?? $customField['value']);
+        }
+
+        if ($submittedCustomFields !== []) {
+            $row['com_fields'] = $submittedCustomFields;
+        }
 
         // com_content's edit form works on a single combined body; keep it consistent with the two columns.
         if (\array_key_exists('introtext', $row) || \array_key_exists('fulltext', $row)) {
@@ -342,6 +364,11 @@ class TranslatorfeedbackModel extends FormModel
         $targetLanguage = (string) $item->target_language;
         $translatorId   = (int) $this->getCurrentUser()->id;
         $db             = $this->getDatabase();
+
+        // The custom-field source values feed the same pairs, under the namespaced key save() used.
+        foreach ((array) $item->source_custom_fields as $name => $customField) {
+            $sourceValues[self::CUSTOM_FIELD_PREFIX . $name] = $customField['value'];
+        }
 
         foreach ($machineDraft as $field => $machineValue) {
             // Only changed fields are worth learning from - an untouched field is not a correction.
