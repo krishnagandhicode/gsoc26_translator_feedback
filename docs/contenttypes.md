@@ -115,14 +115,16 @@ are assigned to the draft and their values written. Global and parent-assigned f
 reach the draft.
 
 **`associatedFields`** (object, optional) - foreign-key fields that point at another
-content type and should be re-pointed at the translated related item. For an article,
-`{ "catid": { "contentType": "category" } }` says the draft's `catid` should become the
-translated category's id. It is read by the related-item remapping, a later pipeline
-step that is not yet implemented.
+content type and are re-pointed at the translated related item. Each entry maps a field to
+the related content type, for an article `{ "catid": "com_categories.category" }`, so the
+draft's `catid` becomes that category's translation. The related type's
+`context_associations` and `table` are used to find the translation; when none exists yet,
+the source's value is kept.
 
-**`m2m_relation`** (string, optional) - a many-to-many related content type, such as an
-article's `"tag"`, whose ids are remapped to the translated tags. Also read by the
-related-item remapping.
+**`m2m_relation`** (object, optional) - many-to-many related items to re-point, mapping the
+data key written onto the draft to the related content type, for an article
+`{ "tags": "com_tags.tag" }`. The source's tag ids are remapped to their translations and
+written back under that key; an id with no translation yet is kept.
 
 ## Example: the article entry
 
@@ -139,8 +141,8 @@ related-item remapping.
     "context_custom_fields": "com_content.article",
     "draftCopyFields": ["catid", "access", "created_by"],
     "stateField": "state",
-    "associatedFields": { "catid": { "contentType": "category" } },
-    "m2m_relation": "tag"
+    "associatedFields": { "catid": "com_categories.category" },
+    "m2m_relation": { "tags": "com_tags.tag" }
 }
 ```
 
