@@ -26,6 +26,7 @@ use Joomla\CMS\Extension\ComponentInterface;
 use Joomla\CMS\MVC\Factory\MVCFactoryServiceInterface;
 use Joomla\CMS\MVC\Model\AdminModel;
 use Joomla\CMS\Plugin\CMSPlugin;
+use Joomla\Component\Translations\Administrator\Helper\ContentTypesHelper;
 use Joomla\Database\DatabaseAwareInterface;
 use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Database\ParameterType;
@@ -65,30 +66,6 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
      * @since  0.3.0
      */
     private const FIELD = 'no_need_for_translation';
-
-    /**
-     * The #__associations context that links an article's language versions.
-     *
-     * @var    string
-     * @since  0.4.0
-     */
-    private const ASSOCIATIONS_CONTEXT = 'com_content.item';
-
-    /**
-     * The component booted to trash or delete an article's translations.
-     *
-     * @var    string
-     * @since  0.4.0
-     */
-    private const COMPONENT = 'com_content';
-
-    /**
-     * The admin model used to trash or delete an article's translations.
-     *
-     * @var    string
-     * @since  0.4.0
-     */
-    private const MODEL = 'Article';
 
     /**
      * Translated item ids captured per source id during onContentBeforeDelete, before
@@ -349,6 +326,18 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
     }
 
     /**
+     * The article content type's properties from the content type map.
+     *
+     * @return  array
+     *
+     * @since   0.4.0
+     */
+    private function properties(): array
+    {
+        return ContentTypesHelper::getProperties(self::CONTENT_TYPE);
+    }
+
+    /**
      * Whether the article is currently flagged "no need for translation".
      *
      * @param   integer  $articleId  The article id.
@@ -453,8 +442,8 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
      */
     private function translationGroupIds(int $sourceId): array
     {
-        // Bound parameters are passed by reference, so the constant needs a variable.
-        $context = self::ASSOCIATIONS_CONTEXT;
+        // Bound parameters are passed by reference, so the value needs a variable.
+        $context = (string) $this->properties()['context_associations'];
 
         $db    = $this->getDatabase();
         $query = $db->getQuery(true)
@@ -499,8 +488,8 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
      */
     private function sourceQueueIdForTranslation(int $translationId): ?int
     {
-        // Bound parameters are passed by reference, so the constants need variables.
-        $context     = self::ASSOCIATIONS_CONTEXT;
+        // Bound parameters are passed by reference, so the values need variables.
+        $context     = (string) $this->properties()['context_associations'];
         $contentType = self::CONTENT_TYPE;
 
         $db    = $this->getDatabase();
@@ -599,11 +588,13 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
         /** @var CMSApplicationInterface $application */
         $application = $this->getApplication();
 
+        $properties = $this->properties();
+
         /** @var ComponentInterface&MVCFactoryServiceInterface $component */
-        $component = $application->bootComponent(self::COMPONENT);
+        $component = $application->bootComponent((string) $properties['component']);
 
         /** @var AdminModel $model */
-        $model = $component->getMVCFactory()->createModel(self::MODEL, 'Administrator', ['ignore_request' => true]);
+        $model = $component->getMVCFactory()->createModel((string) $properties['model'], 'Administrator', ['ignore_request' => true]);
 
         return $model;
     }
