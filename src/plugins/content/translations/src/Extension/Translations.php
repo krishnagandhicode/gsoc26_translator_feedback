@@ -365,7 +365,7 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
     /**
      * The content type's translation properties from the map, or null when the type is not managed.
      *
-     * @param   string  $contentType  The content type alias from the event.
+     * @param   string  $contentType  The content type key from the event.
      *
      * @return  array|null
      *
@@ -382,7 +382,7 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
      * Trash a managed source's translations.
      *
      * @param   integer  $sourceId     The source item id.
-     * @param   string   $contentType  The content type alias.
+     * @param   string   $contentType  The content type key.
      * @param   array    $properties   The content type's properties.
      *
      * @return  void
@@ -472,7 +472,7 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
      * A source item's queue row id, or null when the item is not in the queue.
      *
      * @param   integer  $sourceId     The source item id.
-     * @param   string   $contentType  The content type alias.
+     * @param   string   $contentType  The content type key.
      *
      * @return  integer|null
      *
@@ -544,7 +544,7 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
      *
      * @param   integer  $translationId  The translation draft's item id.
      * @param   string   $context        The #__associations context for the content type.
-     * @param   string   $contentType    The content type alias.
+     * @param   string   $contentType    The content type key.
      *
      * @return  integer|null
      *
@@ -665,7 +665,7 @@ final class Translations extends CMSPlugin implements SubscriberInterface, Datab
      * Remove a source's queue row and its per-language state rows.
      *
      * @param   integer  $sourceId     The source item id.
-     * @param   string   $contentType  The content type alias.
+     * @param   string   $contentType  The content type key.
      *
      * @return  void
      *
