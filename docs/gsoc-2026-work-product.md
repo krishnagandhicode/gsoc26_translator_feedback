@@ -56,7 +56,7 @@ don't learn. The system around them does.
 Underneath there are five tables (`#__translations_queue`, `#__translations_queue_states`,
 `#__translations_feedback`, `#__translations_rules` and `#__translations_standard_forms`),
 four admin views, and three event contracts. At the time of writing `main` carries 44 tracked
-PHP files and roughly 10,110 lines of PHP under `src`, clean at PHPStan level 5 with the
+PHP files and 10,110 lines of PHP under `src`, clean at PHPStan level 5 with the
 deprecation rules switched on.
 
 ## How the loop works
@@ -105,9 +105,9 @@ real multilingual sites, across all four content types. Corrections made in the 
 published rules, and those rules visibly change the next translation: text that came back
 with *Artikel* comes back with *Beitrag* once the rule exists.
 
-I demonstrated it live at the Joomla User Group London meetup on 18 August 2026, running the
-whole cycle on stage. Translate, correct, distil, publish the rules, re-translate, and watch
-the corrections come back on their own.
+I demonstrated it at the Joomla User Group London meetup on 18 August 2026, running the whole
+cycle live. Translate, correct, distil, publish the rules, re-translate, and watch the
+corrections come back on their own.
 
 Four content types are supported: articles, categories, tags and site menu items. They are
 described in a JSON content-type map instead of in conditional code, so the differences
@@ -139,11 +139,13 @@ was reading them. Roughly grouped by what they did:
 
 - **The component and the queue.** The installable component and its tables ([#13]), the queue
   grid and its filters ([#16]), a configurable source language ([#23], [#106]), content types as
-  tabs ([#57]), scoping the queue to items the component can actually translate ([#129]), and
-  two later passes over the grid itself ([#145], [#148]).
+  tabs ([#57]), scoping the queue to items the component can actually translate ([#129]),
+  marking an item as not needing translation at all ([#42]), and two later passes over the
+  grid itself ([#145], [#148]).
 - **The editor and feedback capture.** The side-by-side editor reachable from the queue
-  ([#29]), saving into the draft ([#33]), recording feedback pairs on save ([#36]), editing all
-  translatable fields rather than just title and text ([#59]), translatable custom fields
+  ([#29]), saving into the draft ([#33]), recording feedback pairs on save ([#36]), moving that
+  capture to Approve and pairing it against a snapshot of the machine draft ([#109]), editing
+  all translatable fields rather than just title and text ([#59]), translatable custom fields
   ([#77]), and checking a draft out while it is being edited ([#94]).
 - **The producer.** The component-side model that creates the draft, the association and the
   review state ([#39]), handing a provider one collection of strings instead of one string at a
@@ -173,7 +175,7 @@ was reading them. Roughly grouped by what they did:
 
 ### A fix for Joomla core
 
-Adding category support turned up a real defect in Joomla itself. Editing a source category
+Adding category support turned up a real defect in Joomla itself. Editing a category
 silently drops every unpublished translation out of its association group, and if fewer than
 two members are left the group is deleted outright. It has been there for about eight years,
 and I think it survived because the usual result is partial loss rather than obvious total
@@ -187,8 +189,8 @@ depends on that filter, and raised a patch:
 **[joomla/joomla-cms#48208](https://github.com/joomla/joomla-cms/pull/48208)**, targeting
 `5.4-dev`.
 
-The guidelines ask for what got merged and what did not, so for completeness: this one is
-still open, waiting on core review.
+The guidelines ask for what got merged and what did not, so for completeness: this one was
+merged into `5.4-dev` on 26 August 2026.
 
 ## What is still open
 
@@ -213,7 +215,8 @@ its own conventions instead of a blank slate, with [#153] to export a rule set a
 between sites. Alongside those: pointing links inside translated text at the translated pages
 ([#150]), publishing a distilled rule automatically ([#151]), defaulting the queue filter ([#97]),
 locking the source language in the edit view ([#43]), adding content types through configuration
-([#60]), and the menu follow-ups ([#62], [#63], [#67]).
+([#60]), the menu follow-ups ([#62], [#63]), and reconciling the trash and delete cascade in
+the background ([#67]).
 
 ## What I learned
 
@@ -296,6 +299,7 @@ genuinely welcoming first year.
 [#33]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/33
 [#36]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/36
 [#39]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/39
+[#42]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/42
 [#44]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/44
 [#53]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/53
 [#57]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/57
@@ -319,6 +323,7 @@ genuinely welcoming first year.
 [#100]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/100
 [#103]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/103
 [#106]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/106
+[#109]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/109
 [#117]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/117
 [#119]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/119
 [#120]: https://github.com/joomla-projects/gsoc26_translator_feedback/pull/120
