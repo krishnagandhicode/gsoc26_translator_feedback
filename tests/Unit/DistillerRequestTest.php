@@ -212,6 +212,23 @@ final class DistillerRequestTest extends TestCase
     }
 
     /**
+     * A terminology rule that translates a term as itself is saved as preservation, whatever the case.
+     *
+     * @return  void
+     *
+     * @since   1.2.3
+     */
+    public function testATermTranslatedAsItselfIsPreserved(): void
+    {
+        $this->assertSame('preservation', self::ruleType('terminology', 'template', 'template'));
+        $this->assertSame('preservation', self::ruleType('terminology', 'Template', 'template'));
+        $this->assertSame('terminology', self::ruleType('terminology', 'template', 'modèle'));
+        $this->assertSame('terminology', self::ruleType('terminology', 'template', null));
+        $this->assertSame('preservation', self::ruleType('preservation', 'template', null));
+        $this->assertSame('style', self::ruleType('style', null, null));
+    }
+
+    /**
      * A feedback row with only the columns the selection reads.
      *
      * @param   integer  $id        The row id.
@@ -316,6 +333,22 @@ final class DistillerRequestTest extends TestCase
     private static function hasEvidence(array $candidate, array $requestIds): bool
     {
         return self::callModel('hasEvidence', [$candidate, $requestIds]);
+    }
+
+    /**
+     * The type a rule candidate is saved as, as a distil run decides it.
+     *
+     * @param   string       $ruleType    The type the provider gave.
+     * @param   string|null  $sourceTerm  The source term.
+     * @param   string|null  $targetTerm  The target term.
+     *
+     * @return  string
+     *
+     * @since   1.2.3
+     */
+    private static function ruleType(string $ruleType, ?string $sourceTerm, ?string $targetTerm): string
+    {
+        return self::callModel('ruleType', [$ruleType, $sourceTerm, $targetTerm]);
     }
 
     /**

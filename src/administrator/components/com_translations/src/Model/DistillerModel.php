@@ -1006,17 +1006,18 @@ class DistillerModel extends BaseDatabaseModel
         // directly) so the table's _jsonEncode encodes source_feedback_ids and the array is
         // not dropped by the driver on store.
         $sourceTerm = $this->nullableTerm($candidate['source_term'] ?? null);
+        $targetTerm = $this->nullableTerm($candidate['target_term'] ?? null);
 
         $data = [
             'rule_name'            => (string) ($candidate['rule_name'] ?? ''),
-            'rule_type'            => (string) ($candidate['rule_type'] ?? ''),
+            'rule_type'            => self::ruleType((string) ($candidate['rule_type'] ?? ''), $sourceTerm, $targetTerm),
             'target_language'      => $targetLanguage,
             'rule_text'            => (string) ($candidate['rule_text'] ?? ''),
             'source_term'          => $sourceTerm,
             'source_term_standard' => $sourceTerm !== null && WordNormaliser::isSingleWord($sourceTerm)
                 ? ($standardForms[mb_strtolower($sourceTerm)] ?? null)
                 : null,
-            'target_term'          => $this->nullableTerm($candidate['target_term'] ?? null),
+            'target_term'          => $targetTerm,
             'search_keywords'      => (string) ($candidate['search_keywords'] ?? ''),
         ];
 
@@ -1142,6 +1143,32 @@ class DistillerModel extends BaseDatabaseModel
         $feedbackIds = array_map('intval', (array) ($candidate['source_feedback_ids'] ?? []));
 
         return array_intersect($feedbackIds, array_map('intval', $requestIds)) !== [];
+    }
+
+    /**
+     * The type a rule candidate is saved as. A term translated as itself is kept as it stands, so
+     * the rule preserves it, whatever type the provider gave.
+     *
+     * @param   string       $ruleType    The type the provider gave.
+     * @param   string|null  $sourceTerm  The source term.
+     * @param   string|null  $targetTerm  The target term.
+     *
+     * @return  string
+     *
+     * @since   1.2.3
+     */
+    private static function ruleType(string $ruleType, ?string $sourceTerm, ?string $targetTerm): string
+    {
+        if (
+            $ruleType === 'terminology'
+            && $sourceTerm !== null
+            && $targetTerm !== null
+            && mb_strtolower($sourceTerm) === mb_strtolower($targetTerm)
+        ) {
+            return 'preservation';
+        }
+
+        return $ruleType;
     }
 
     /**
